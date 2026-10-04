@@ -69,8 +69,7 @@ flowchart LR
     L -.-> CW[(CloudWatch<br/>JSON logs & alarms)]
 ```
 
-<details>
-<summary>Request lifecycle (sequence diagram)</summary>
+### Request lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -96,7 +95,6 @@ sequenceDiagram
     Worker->>Slack: chat.postMessage(thread_ts, answer + sources)
     Slack-->>User: threaded answer
 ```
-</details>
 
 See **[DESIGN.md](DESIGN.md)** for the design decisions, trade-offs, failure modes, security and cost model.
 
