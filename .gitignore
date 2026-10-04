@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+
+# Build artefacts (the layer is built by `sam build` from layer/requirements.txt)
+*.zip
+layer/python/
+
+# Secrets / local config - never commit
+.env
+*.pem
+secret*.json
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

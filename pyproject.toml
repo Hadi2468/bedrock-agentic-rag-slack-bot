@@ -1,0 +1,45 @@
+[project]
+name = "slack-bedrock-agentic-rag"
+version = "1.0.0"
+description = "Slack RAG assistant: Slack Events API -> API Gateway -> Lambda -> Amazon Bedrock Knowledge Base (agentic retrieval)"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Hadi Hosseini" }]
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # flake8-bugbear
+    "UP",       # pyupgrade
+    "SIM",      # flake8-simplify
+    "N",        # pep8-naming
+    "S",        # flake8-bandit (security)
+    "RUF",      # ruff-specific
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]  # asserts and fake credentials are fine in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90

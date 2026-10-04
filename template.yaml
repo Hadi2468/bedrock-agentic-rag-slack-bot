@@ -1,0 +1,199 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Slack RAG assistant - Slack Events API -> API Gateway -> Lambda ->
+  Amazon Bedrock managed Knowledge Base (agentic retrieval) -> Slack Web API.
+
+Parameters:
+  KnowledgeBaseId:
+    Type: String
+    Description: ID of the Bedrock managed knowledge base that indexes the S3 documents.
+    AllowedPattern: "^[0-9a-zA-Z]{10}$"
+  SlackSecretArn:
+    Type: String
+    Description: >-
+      ARN of a Secrets Manager secret containing
+      {"bot_token": "xoxb-...", "signing_secret": "..."}.
+  MaxAgentIterations:
+    Type: Number
+    Default: 5
+    MinValue: 2
+    MaxValue: 5
+    Description: Maximum planning/retrieval iterations for agentic retrieval.
+  GuardrailId:
+    Type: String
+    Default: ""
+    Description: Optional Bedrock guardrail ID applied during agentic retrieval.
+  GuardrailVersion:
+    Type: String
+    Default: ""
+    Description: Version of the optional guardrail (required if GuardrailId is set).
+  StageName:
+    Type: String
+    Default: prod
+  LogRetentionInDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [7, 14, 30, 60, 90, 180, 365]
+
+Conditions:
+  HasGuardrail: !Not [!Equals [!Ref GuardrailId, ""]]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [arm64]
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # Lambda layer: a newer boto3 than the runtime ships, for AgenticRetrieveStream
+  # ---------------------------------------------------------------------------
+  Boto3Layer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-boto3"
+      Description: boto3/botocore with bedrock-agent-runtime AgenticRetrieveStream support
+      ContentUri: layer/
+      CompatibleRuntimes: [python3.12]
+      CompatibleArchitectures: [arm64]
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: arm64
+
+  # ---------------------------------------------------------------------------
+  # Public endpoint for the Slack Events API (requests are HMAC-verified in code)
+  # ---------------------------------------------------------------------------
+  SlackApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref StageName
+      EndpointConfiguration:
+        Type: REGIONAL
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingRateLimit: 20
+          ThrottlingBurstLimit: 40
+
+  FunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-handler"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  SlackRagFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-handler"
+      Description: Receives Slack events and answers questions from the Bedrock knowledge base
+      CodeUri: src/
+      Handler: app.handler.lambda_handler
+      MemorySize: 512
+      # Receiver path returns in < 1 s; worker path waits on multi-step agentic retrieval.
+      Timeout: 120
+      Layers:
+        - !Ref Boto3Layer
+      LoggingConfig:
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+        LogGroup: !Ref FunctionLogGroup
+      Environment:
+        Variables:
+          KNOWLEDGE_BASE_ID: !Ref KnowledgeBaseId
+          SLACK_SECRET_ARN: !Ref SlackSecretArn
+          MAX_AGENT_ITERATIONS: !Ref MaxAgentIterations
+          GUARDRAIL_ID: !Ref GuardrailId
+          GUARDRAIL_VERSION: !Ref GuardrailVersion
+      # Async worker invocations must not be retried: a retry would post a duplicate answer.
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+        MaximumEventAgeInSeconds: 300
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SlackSecretArn
+        - Version: "2012-10-17"
+          Statement:
+            # Required permissions for agentic retrieval, per the Bedrock user guide.
+            - Sid: AgenticRetrieve
+              Effect: Allow
+              Action: bedrock:AgenticRetrieveStream
+              Resource: "*"
+            - Sid: KnowledgeBaseRead
+              Effect: Allow
+              Action:
+                - bedrock:Retrieve
+                - bedrock:GetDocumentContent
+              Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/${KnowledgeBaseId}"
+            - Sid: ManagedModelInvoke
+              Effect: Allow
+              Action: bedrock:InvokeModelWithResponseStream
+              Resource: "*"
+            # Receiver -> worker hand-off (asynchronous self-invocation).
+            - Sid: SelfInvoke
+              Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource:
+                - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-handler"
+                - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-handler:*"
+            - !If
+              - HasGuardrail
+              - Sid: Guardrail
+                Effect: Allow
+                Action:
+                  - bedrock:GetGuardrail
+                  - bedrock:ApplyGuardrail
+                Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${GuardrailId}"
+              - !Ref AWS::NoValue
+      Events:
+        SlackEvents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SlackApi
+            Path: /slack/events
+            Method: post
+
+  # ---------------------------------------------------------------------------
+  # Observability
+  # ---------------------------------------------------------------------------
+  FunctionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Slack RAG handler is failing (Bedrock, Slack or code errors).
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SlackRagFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  FunctionDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: p95 answer latency is approaching the function timeout.
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SlackRagFunction
+      ExtendedStatistic: p95
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 90000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  SlackEventsRequestUrl:
+    Description: Paste this into Slack -> Event Subscriptions -> Request URL.
+    Value: !Sub "https://${SlackApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/slack/events"
+  FunctionName:
+    Value: !Ref SlackRagFunction
+  LogGroup:
+    Value: !Ref FunctionLogGroup

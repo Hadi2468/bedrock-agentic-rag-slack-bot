@@ -1,0 +1,3 @@
+# The boto3 bundled with the Lambda Python runtime predates the
+# bedrock-agent-runtime AgenticRetrieveStream API, so ship a newer SDK as a layer.
+boto3==1.43.108
