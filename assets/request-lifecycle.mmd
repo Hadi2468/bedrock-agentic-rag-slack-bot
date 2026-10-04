@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant Slack
+    participant APIGW as API Gateway
+    participant Receiver as Lambda (receiver)
+    participant Worker as Lambda (worker)
+    participant KB as Bedrock Knowledge Base
+
+    User->>Slack: @bot What is RDD?
+    Slack->>APIGW: POST /slack/events (signed)
+    APIGW->>Receiver: proxy event
+    Receiver->>Receiver: verify HMAC signature & timestamp
+    Receiver-)Worker: Invoke (InvocationType=Event)
+    Receiver-->>Slack: 200 OK (well under 3 s)
+    Worker->>KB: AgenticRetrieveStream(question)
+    loop up to 5 agent iterations
+        KB->>KB: plan sub-queries → retrieve → evaluate
+    end
+    KB-->>Worker: stream: trace events, answer chunks, result + citations
+    Worker->>Slack: chat.postMessage(thread_ts, answer + sources)
+    Slack-->>User: threaded answer
