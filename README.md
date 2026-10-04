@@ -8,11 +8,11 @@
 A serverless **Retrieval-Augmented Generation (RAG)** assistant that lives in Slack.
 Employees ask questions in plain English, either by `@mentioning` the bot in a channel or in a direct message. The bot answers from the organisation's **own documents**: 35 PDF, Word and Excel files stored in Amazon S3 and indexed by an **Amazon Bedrock managed Knowledge Base**. Answers come back in a thread, with the source documents they cite.
 
-> **Example**
-> **User:** `@Knowledge Assistant What is an RDD and why is it fault tolerant?`
-> **Bot (in thread):** *RDD (Resilient Distributed Dataset)* is Spark's fundamental data structure: an immutable, partitioned collection processed in parallel… Lost partitions are recomputed from their lineage…
-> **Sources**
-> • Spark Concepts and Questions.pdf
+## Demo
+
+<p align="center">
+  <img src="assets/demo.png" alt="The assistant answering 'What is RDD?' in Slack with formatted text and a cited source document" width="720">
+</p>
 
 ---
 
