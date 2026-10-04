@@ -1,7 +1,7 @@
 # Slack × Amazon Bedrock — Agentic RAG Knowledge Assistant
 
 [![CI](https://github.com/Hadi2468/bedrock-agentic-rag-slack-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/Hadi2468/bedrock-agentic-rag-slack-bot/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.12-blue)
+![Python](https://img.shields.io/badge/python-3.13-blue)
 ![AWS SAM](https://img.shields.io/badge/IaC-AWS%20SAM-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -33,8 +33,8 @@ Knowledge is scattered across PDFs, wikis, spreadsheets and old Slack threads, a
 
 ## Architecture
 
-<!-- To replace with the draw.io export: save it as docs/images/architecture.png and use
-     ![Architecture](docs/images/architecture.png) -->
+<!-- To replace with the draw.io export: save it as assets/architecture.png and use
+     ![Architecture](assets/architecture.png) -->
 
 ```mermaid
 flowchart LR
@@ -42,7 +42,7 @@ flowchart LR
     S -->|"Events API (HTTPS POST)"| AG[Amazon API Gateway<br/>/slack/events]
     AG --> LR
 
-    subgraph L["AWS Lambda (Python 3.12 + boto3 layer)"]
+    subgraph L["AWS Lambda (Python 3.13 + boto3 layer)"]
         LR["Receiver<br/>verify signature · ack < 3 s"] -->|"async invoke"| LW["Worker<br/>query KB · format answer"]
     end
 
@@ -92,7 +92,7 @@ The design decisions, trade-offs and failure modes are written up in **[DESIGN.m
 ## Tech stack
 
 - **LLM / RAG:** Amazon Bedrock managed Knowledge Base, Agentic Retrieval (`AgenticRetrieveStream`), managed foundation model, optional Bedrock Guardrails
-- **Compute & API:** AWS Lambda (Python 3.12, arm64), Lambda layer (boto3 1.43), Amazon API Gateway (REST, regional)
+- **Compute & API:** AWS Lambda (Python 3.13, arm64), Lambda layer (boto3 1.43), Amazon API Gateway (REST, regional)
 - **Data:** Amazon S3 (source documents), managed vector index
 - **Security & ops:** AWS Secrets Manager, IAM least privilege, CloudWatch Logs (JSON) and Alarms
 - **Integration:** Slack Events API, Slack Web API, Slack app manifest
@@ -112,6 +112,7 @@ The design decisions, trade-offs and failure modes are written up in **[DESIGN.m
 ├── layer/requirements.txt  # boto3 version that supports agentic retrieval
 ├── tests/                  # 49 unit tests, all AWS/Slack calls faked
 ├── slack/app-manifest.yaml # one-click Slack app configuration
+├── assets/                 # architecture diagrams and screenshots
 ├── template.yaml           # AWS SAM: API Gateway, Lambda, layer, IAM, logs, alarms
 ├── DESIGN.md               # design decisions & trade-offs
 └── .github/workflows/ci.yml
@@ -122,7 +123,7 @@ The design decisions, trade-offs and failure modes are written up in **[DESIGN.m
 ### Prerequisites
 
 - AWS account with Amazon Bedrock access in your region (e.g. `us-east-1`)
-- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) and Python 3.12
+- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) and Python 3.13
 - A Slack workspace where you can install apps
 
 ### 1. Create the knowledge base

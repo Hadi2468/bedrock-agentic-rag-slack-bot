@@ -41,7 +41,7 @@ Conditions:
 
 Globals:
   Function:
-    Runtime: python3.12
+    Runtime: python3.13
     Architectures: [arm64]
 
 Resources:
@@ -54,11 +54,11 @@ Resources:
       LayerName: !Sub "${AWS::StackName}-boto3"
       Description: boto3/botocore with bedrock-agent-runtime AgenticRetrieveStream support
       ContentUri: layer/
-      CompatibleRuntimes: [python3.12]
+      CompatibleRuntimes: [python3.13]
       CompatibleArchitectures: [arm64]
       RetentionPolicy: Delete
     Metadata:
-      BuildMethod: python3.12
+      BuildMethod: python3.13
       BuildArchitecture: arm64
 
   # ---------------------------------------------------------------------------
