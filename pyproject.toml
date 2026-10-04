@@ -1,5 +1,5 @@
 [project]
-name = "slack-bedrock-agentic-rag"
+name = "bedrock-agentic-rag-slack-bot"
 version = "1.0.0"
 description = "Slack RAG assistant: Slack Events API -> API Gateway -> Lambda -> Amazon Bedrock Knowledge Base (agentic retrieval)"
 readme = "README.md"

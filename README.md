@@ -1,6 +1,6 @@
 # Slack × Amazon Bedrock — Agentic RAG Knowledge Assistant
 
-[![CI](https://github.com/Hadi2468/Slack-Bedrock_Agentic_RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/Hadi2468/Slack-Bedrock_Agentic_RAG/actions/workflows/ci.yml)
+[![CI](https://github.com/Hadi2468/bedrock-agentic-rag-slack-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/Hadi2468/bedrock-agentic-rag-slack-bot/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![AWS SAM](https://img.shields.io/badge/IaC-AWS%20SAM-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
