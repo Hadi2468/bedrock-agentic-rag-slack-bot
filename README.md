@@ -42,32 +42,8 @@ instead of making one up.
 
 ## 🔀 Architecture
 
-<!-- To replace with the draw.io export: save it as assets/architecture.png and use
-     ![Architecture](assets/architecture.png) -->
-
-```mermaid
-flowchart LR
-    U([Slack user]) -->|"@mention / DM"| S[Slack]
-    S -->|"Events API (HTTPS POST)"| AG[Amazon API Gateway<br/>/slack/events]
-    AG --> LR
-
-    subgraph L["AWS Lambda (Python 3.13 + boto3 layer)"]
-        LR["Receiver<br/>verify signature · ack < 3 s"] -->|"async invoke"| LW["Worker<br/>query KB · format answer"]
-    end
-
-    LW -->|"AgenticRetrieveStream"| KB
-
-    subgraph BR["Amazon Bedrock"]
-        KB["Managed Knowledge Base<br/>agentic retrieval"] --> FM["Managed foundation model<br/>plan · retrieve · generate"]
-        KB --> VS[("Vector index<br/>(managed)")]
-    end
-
-    S3[("Amazon S3<br/>35 PDF / Word / Excel docs")] -.->|"ingestion / sync<br/>parse · chunk · embed"| VS
-
-    LW -->|"chat.postMessage (thread reply)"| S
-    SM[(Secrets Manager<br/>Slack token & signing secret)] -.-> L
-    L -.-> CW[(CloudWatch<br/>JSON logs & alarms)]
-```
+![Architecture: User and Slack, API Gateway, Lambda, Amazon Bedrock Knowledge Base and LLM, S3 source documents, with IAM, Secrets Manager and CloudWatch](assets/architecture.png)
+*Editable source: [assets/architecture.drawio](assets/architecture.drawio)*
 
 ### Request lifecycle
 
